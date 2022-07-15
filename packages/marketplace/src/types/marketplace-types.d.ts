@@ -69,9 +69,10 @@ export type Manifest = {
 
   // TODO: split these into different types?
   tags?: string[];
-  usercss?: string;
-  schemes?: string[];
+  usercss?: string; // URL for usercss
+  schemes?: string; // URL for schemes
   include?: string[];
+  lastUpdated: undefined;
 };
 
 // From fetchExtensionManifest
@@ -85,7 +86,7 @@ export type CardItem = {
   repo: string;
   branch: string;
   imageURL: string;
-  extensionURL: string;
+  extensionURL?: string;
   readmeURL: string;
   stars: number;
   tags: string[];
@@ -99,8 +100,8 @@ export type CardItem = {
   // TODO: clean this up somehow
   // It complains bitterly in Card.tsx
   // if I don't have all the same properties as CardItem
-  code: undefined;
-  description: undefined;
+  code?: undefined;
+  description?: undefined;
 };
 
 // TODO: use this in `fetchThemeManifest()`
@@ -122,6 +123,7 @@ export type VisualConfig = {
   // of stargazers, and the subscribers_count isn't returned in the main API call we make
   // https://github.community/t/bug-watchers-count-is-the-duplicate-of-stargazers-count/140865/4
   followers: boolean;
+  githubTopics: boolean;
 }
 
 // example colour scheme

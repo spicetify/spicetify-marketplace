@@ -49,7 +49,13 @@ module.exports = {
     "comma-spacing": [
       "error", { "before": false, "after": true },
     ],
+    "arrow-parens": [
+      "error", "always",
+    ],
     "no-trailing-spaces": "error",
+    "eol-last": [
+      "error", "always",
+    ],
     "keyword-spacing": "error",
     "no-multiple-empty-lines": [
       "error", { "max": 1 },

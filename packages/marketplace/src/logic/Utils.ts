@@ -68,15 +68,15 @@ export const parseIni = (data: string) => {
     if (regex.comment.test(line)) {
       return;
     } else if (regex.param.test(line)) {
-      const match: string[] | null = line.match(regex.param);
+      const match = line.match(regex.param);
 
       // TODO: github copilot made this part, but I have no idea what it does
       // if (match?.length !== 3) {
       //   throw "Could not parse INI file.";
       // }
 
-      if (section) {
-        value[section][match?.[1]] = match?.[2].split(";")[0].trim();
+      if (section && match) {
+        value[section][match[1]] = match[2].split(";")[0].trim();
       } else if (match) {
         value[match[1]] = match[2].split(";")[0].trim();
       }
@@ -182,7 +182,7 @@ export const processAuthors = (authors: Author[], user: string) => {
 export const generateSchemesOptions = (schemes: SchemeIni) => {
   // e.g. [ { key: "red", value: "Red" }, { key: "dark", value: "Dark" } ]
   if (!schemes) return [];
-  return Object.keys(schemes).map(schemeName => (
+  return Object.keys(schemes).map((schemeName) => (
     { key: schemeName, value: schemeName } as SortBoxOption
   ));
 };
@@ -308,7 +308,7 @@ export const parseCSS = async (themeData: CardItem) => {
   const assetsUrl = userCssUrl.replace("/user.css", "/assets/");
 
   console.log("Parsing CSS: ", userCssUrl);
-  let css = await fetch(`${userCssUrl}?time=${Date.now()}`).then(res => res.text());
+  let css = await fetch(`${userCssUrl}?time=${Date.now()}`).then((res) => res.text());
   // console.log("Parsed CSS: ", css);
 
   const urls = css.matchAll(/url\(['|"](?<path>.+?)['|"]\)/gm) || [];
@@ -351,7 +351,7 @@ export const getParamsFromGithubRaw = (url: string) => {
 
 export function addToSessionStorage(items, key?) {
   if (!items) return;
-  items.forEach(item => {
+  items.forEach((item) => {
     if (!key) key = `${items.user}-${items.repo}`;
     // If the key already exists, it will append to it instead of overwriting it
     const existing = window.sessionStorage.getItem(key);
@@ -411,5 +411,5 @@ export async function getMarkdownHTML(markdown: string, user: string, repo: stri
 
 // This function is used to sleep for a certain amount of time
 export function sleep(ms: number | undefined) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

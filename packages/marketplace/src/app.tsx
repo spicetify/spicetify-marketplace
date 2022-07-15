@@ -40,7 +40,7 @@ class App extends React.Component<null, {count: number, CONFIG: Config}> {
         throw new Error("Could not parse marketplace tabs key");
       } else if (tabs.length === 0) {
         throw new Error("Empty marketplace tabs key");
-      } else if (tabs.filter(tab => !tab).length > 0) {
+      } else if (tabs.filter((tab) => !tab).length > 0) {
         throw new Error("Falsey marketplace tabs key");
       }
     } catch {
@@ -80,6 +80,7 @@ class App extends React.Component<null, {count: number, CONFIG: Config}> {
         // of stargazers, and the subscribers_count isn't returned in the main API call we make
         // https://github.community/t/bug-watchers-count-is-the-duplicate-of-stargazers-count/140865/4
         followers: JSON.parse(getLocalStorageDataFromKey("marketplace:followers", false)),
+        githubTopics: JSON.parse(getLocalStorageDataFromKey("marketplace:githubTopics", false)),
       },
       tabs,
       activeTab: getLocalStorageDataFromKey(LOCALSTORAGE_KEYS.activeTab, tabs[0]),
@@ -90,7 +91,7 @@ class App extends React.Component<null, {count: number, CONFIG: Config}> {
       },
     };
 
-    if (!this.CONFIG.activeTab || !this.CONFIG.tabs.filter(tab => tab.name === this.CONFIG.activeTab).length) {
+    if (!this.CONFIG.activeTab || !this.CONFIG.tabs.filter((tab) => tab.name === this.CONFIG.activeTab).length) {
       this.CONFIG.activeTab = this.CONFIG.tabs[0].name;
     }
   }

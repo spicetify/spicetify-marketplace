@@ -90,8 +90,8 @@ const SnippetModal = (props: { content?: CardProps, type: ModalType }) => {
         <div className="marketplace-code-editor-wrapper marketplace-code-editor">
           <Editor
             value={code}
-            onValueChange={code => setCode(code)}
-            highlight={code => highlight(code, languages.css)}
+            onValueChange={(code) => setCode(code)}
+            highlight={(code) => highlight(code, languages.css)}
             textareaId="marketplace-custom-css"
             textareaClassName="snippet-code-editor"
             readOnly={props.type === "VIEW_SNIPPET"}
@@ -130,7 +130,7 @@ const SnippetModal = (props: { content?: CardProps, type: ModalType }) => {
           Snippet Preview { props.type !== "VIEW_SNIPPET" && "(optional)" }
         </label>
         {imageURL &&
-          <label htmlFor={PREVIEW_IMAGE_ID} style={{ textAlign: "center" }}>
+          <label htmlFor={PREVIEW_IMAGE_ID} className="marketplace-customCSS-image-label">
             <img className="marketplace-customCSS-image-preview" src={imageURL} alt="Preview" />
           </label>
         }

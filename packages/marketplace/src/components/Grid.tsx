@@ -2,25 +2,24 @@ import React from "react";
 import semver from "semver";
 import { Option } from "react-dropdown";
 
-import { CardItem, CardType, Config, SchemeIni, Snippet, TabItemConfig } from "../types/marketplace-types";
+import { CardItem, CardType, Config, RepoType, SchemeIni, Snippet, TabItemConfig } from "../types/marketplace-types";
 import { getLocalStorageDataFromKey, generateSchemesOptions, injectColourScheme } from "../logic/Utils";
 import { LOCALSTORAGE_KEYS, ITEMS_PER_REQUEST, MARKETPLACE_VERSION, LATEST_RELEASE } from "../constants";
+import { DownloadIcon, LoadingIcon, LoadMoreIcon, SettingsIcon, ThemeDeveloperToolsIcon } from "./Icons";
 import { openModal } from "../logic/LaunchModals";
-import {
-  getTaggedRepos,
-  fetchExtensionManifest, fetchThemeManifest, fetchAppManifest,
-  fetchCssSnippets, getBlacklist,
-} from "../logic/FetchRemotes";
-import LoadMoreIcon from "./Icons/LoadMoreIcon";
-import LoadingIcon from "./Icons/LoadingIcon";
-import SettingsIcon from "./Icons/SettingsIcon";
-import ThemeDeveloperToolsIcon from "./Icons/ThemeDeveloperToolsIcon";
 import SortBox from "./Sortbox";
 import { TopBarContent } from "./TabBar";
 import Card from "./Card/Card";
 import Button from "./Button";
-import DownloadIcon from "./Icons/DownloadIcon";
 import Changelog from "./Modals/Changelog";
+import {
+  fetchBlacklist, fetchCssSnippets, fetchMonoManifest,
+  buildExtensionCardData, buildThemeCardData, buildAppCardData,
+} from "../logic/FetchRemotes";
+import {
+  getTaggedRepos,
+  fetchExtensionManifest, fetchThemeManifest, fetchAppManifest,
+} from "../logic/FetchTopicRemotes";
 
 export default class Grid extends React.Component<
 {
@@ -178,43 +177,7 @@ export default class Grid extends React.Component<
   // TODO: maybe we should rename `loadPage()`, since it's slightly confusing when we have github pages as well
   async loadPage(queue: never[], query?: string) {
     switch (this.CONFIG.activeTab) {
-    case "Extensions": {
-      const pageOfRepos = await getTaggedRepos("spicetify-extensions", this.requestPage, this.BLACKLIST, query);
-      for (const repo of pageOfRepos.items) {
-        const extensions = await fetchExtensionManifest(
-          repo.contents_url,
-          repo.default_branch,
-          repo.stargazers_count,
-          this.CONFIG.visual.hideInstalled,
-        );
-
-        // I believe this stops the requests when switching tabs?
-        if (this.requestQueue.length > 1 && queue !== this.requestQueue[0]) {
-          // Stop this queue from continuing to fetch and append to cards list
-          return -1;
-        }
-
-        if (extensions && extensions.length) {
-          // console.log(`${repo.name} has ${extensions.length} extensions:`, extensions);
-          extensions.forEach((extension) => {
-            Object.assign(extension, { lastUpdated: repo.pushed_at });
-            this.appendCard(extension, "extension");
-          });
-        }
-      }
-
-      // First result is null or -1 so it coerces to 1
-      const currentPage = this.requestPage > -1 && this.requestPage ? this.requestPage : 1;
-      // Sets the amount of items that have thus been fetched
-      const soFarResults = ITEMS_PER_REQUEST * (currentPage - 1) + pageOfRepos.page_count;
-      const remainingResults = pageOfRepos.total_count - soFarResults;
-
-      // If still have more results, return next page number to fetch
-      console.log(`Parsed ${soFarResults}/${pageOfRepos.total_count} extensions`);
-      if (remainingResults > 0) return currentPage + 1;
-      else console.log("No more extension results");
-      break;
-    } case "Installed": {
+    case "Installed": {
       const installedStuff = {
         theme: getLocalStorageDataFromKey(LOCALSTORAGE_KEYS.installedThemes, []),
         extension: getLocalStorageDataFromKey(LOCALSTORAGE_KEYS.installedExtensions, []),
@@ -223,16 +186,17 @@ export default class Grid extends React.Component<
 
       for (const type in installedStuff) {
         if (installedStuff[type].length) {
-          installedStuff[type].forEach(async (itemKey) => {
+          installedStuff[type].forEach(async (itemKey: string) => {
             // TODO: err handling
-            const extension = getLocalStorageDataFromKey(itemKey);
+            // Waits until localStorage is fetched before passing down to the card
+            const item = await getLocalStorageDataFromKey(itemKey);
             // I believe this stops the requests when switching tabs?
             if (this.requestQueue.length > 1 && queue !== this.requestQueue[0]) {
               // Stop this queue from continuing to fetch and append to cards list
               return -1;
             }
 
-            this.appendCard(extension, type as CardType);
+            this.appendCard(item, type as CardType);
           });
         }
       }
@@ -240,71 +204,69 @@ export default class Grid extends React.Component<
 
       // Don't need to return a page number because
       // installed extension do them all in one go, since it's local
-    } case "Themes": {
-      const pageOfRepos = await getTaggedRepos("spicetify-themes", this.requestPage, this.BLACKLIST, query);
-      for (const repo of pageOfRepos.items) {
+    }
+    case "Extensions":
+    case "Themes":
+    case "Apps": {
+      const type = this.CONFIG.activeTab.slice(0, -1).toLowerCase() as RepoType;
+      let allRepos;
+      if (this.CONFIG.visual.githubTopics) {
+        const topicResponse = await getTaggedRepos(`spicetify-${type}s`, this.requestPage, this.BLACKLIST, query);
+        allRepos = topicResponse.items;
+      } else {
+        allRepos = await fetchMonoManifest(type);
+      }
 
-        const themes = await fetchThemeManifest(
-          repo.contents_url,
-          repo.default_branch,
-          repo.stargazers_count,
-        );
+      for (const repo of allRepos) {
+        let cardData: CardItem | CardItem[] | null;
+        if (this.CONFIG.visual.githubTopics) {
+          switch (type) {
+          case "extension":
+            cardData = await fetchExtensionManifest(repo.contents_url, repo.default_branch, repo.stargazers_count);
+            break;
+          case "theme":
+            cardData = await fetchThemeManifest(repo.contents_url, repo.default_branch, repo.stargazers_count);
+            break;
+          case "app":
+            cardData = await fetchAppManifest(repo.contents_url, repo.default_branch, repo.stargazers_count);
+            break;
+          }
+        } else {
+          switch (type) {
+          case "extension":
+            cardData = buildExtensionCardData(repo);
+            break;
+          case "theme":
+            cardData = buildThemeCardData(repo);
+            break;
+          case "app":
+            cardData = buildAppCardData(repo);
+            break;
+          default:
+            throw new Error(`Unknown type: ${type}`);
+          }
+        }
+
+        // TODO: do we need this queue stuff any more?
         // I believe this stops the requests when switching tabs?
         if (this.requestQueue.length > 1 && queue !== this.requestQueue[0]) {
           // Stop this queue from continuing to fetch and append to cards list
           return -1;
         }
 
-        if (themes && themes.length) {
-          themes.forEach((theme) => {
-            Object.assign(theme, { lastUpdated: repo.pushed_at });
-            this.appendCard(theme, "theme");
-          });
+        if (cardData) {
+          // console.log(cardData);
+          if (this.CONFIG.visual.githubTopics) {
+            for (const item of cardData as CardItem[]) {
+              Object.assign(item, { lastUpdated: repo.pushed_at });
+              this.appendCard(item, type);
+            }
+          } else {
+            this.appendCard(cardData as CardItem, type);
+          }
         }
       }
-
-      // First request is null, so coerces to 1
-      const currentPage = this.requestPage > -1 && this.requestPage ? this.requestPage : 1;
-      // -1 because the page number is 1-indexed
-      const soFarResults = ITEMS_PER_REQUEST * (currentPage - 1) + pageOfRepos.page_count;
-      const remainingResults = pageOfRepos.total_count - soFarResults;
-
-      console.log(`Parsed ${soFarResults}/${pageOfRepos.total_count} themes`);
-      if (remainingResults > 0) return currentPage + 1;
-      else console.log("No more theme results");
-      break;
-    } case "Apps": {
-      const pageOfRepos = await getTaggedRepos("spicetify-apps", this.requestPage, this.BLACKLIST, query);
-      for (const repo of pageOfRepos.items) {
-
-        const apps = await fetchAppManifest(
-          repo.contents_url,
-          repo.default_branch,
-          repo.stargazers_count,
-        );
-        // I believe this stops the requests when switching tabs?
-        if (this.requestQueue.length > 1 && queue !== this.requestQueue[0]) {
-          // Stop this queue from continuing to fetch and append to cards list
-          return -1;
-        }
-
-        if (apps && apps.length) {
-          apps.forEach((app) => {
-            Object.assign(app, { lastUpdated: repo.pushed_at });
-            this.appendCard(app, "app");
-          });
-        }
-      }
-
-      // First request is null, so coerces to 1
-      const currentPage = this.requestPage > -1 && this.requestPage ? this.requestPage : 1;
-      // -1 because the page number is 1-indexed
-      const soFarResults = ITEMS_PER_REQUEST * (currentPage - 1) + pageOfRepos.page_count;
-      const remainingResults = pageOfRepos.total_count - soFarResults;
-
-      console.log(`Parsed ${soFarResults}/${pageOfRepos.total_count} apps`);
-      if (remainingResults > 0) return currentPage + 1;
-      else console.log("No more app results");
+      console.log(`Parsed ${this.CONFIG.activeTab.toLowerCase()}`);
       break;
     } case "Snippets": {
       const snippets = await fetchCssSnippets();
@@ -344,7 +306,7 @@ export default class Grid extends React.Component<
     }
 
     if (this.requestPage === -1) {
-      this.requestQueue = this.requestQueue.filter(a => a !== queue);
+      this.requestQueue = this.requestQueue.filter((a) => a !== queue);
       return;
     }
 
@@ -406,8 +368,8 @@ export default class Grid extends React.Component<
   */
   async componentDidMount() {
     // Checks for new Marketplace updates
-    fetch(LATEST_RELEASE).then(res => res.json()).then(
-      result => {
+    fetch(LATEST_RELEASE).then((res) => res.json()).then(
+      (result) => {
         this.setState({
           version: result[0].name,
         });
@@ -418,7 +380,7 @@ export default class Grid extends React.Component<
           console.error(err);
         }
       },
-      error => {
+      (error) => {
         console.error("Failed to check for updates", error);
       },
     );
@@ -441,7 +403,7 @@ export default class Grid extends React.Component<
     }
 
     // Load blacklist
-    this.BLACKLIST = await getBlacklist();
+    this.BLACKLIST = await fetchBlacklist();
     this.newRequest(ITEMS_PER_REQUEST);
   }
 

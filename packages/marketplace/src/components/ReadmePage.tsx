@@ -1,11 +1,8 @@
 import React from "react";
 import { getMarkdownHTML } from "../logic/Utils";
+import { LoadingIcon, DownloadIcon, GitHubIcon, LoadingIcon, TrashIcon } from "./Icons";
 import { CardType } from "../types/marketplace-types";
 import Button from "./Button";
-import DownloadIcon from "./Icons/DownloadIcon";
-import GitHubIcon from "./Icons/GitHubIcon";
-import LoadingIcon from "./Icons/LoadingIcon";
-import TrashIcon from "./Icons/TrashIcon";
 
 class ReadmePage extends React.Component<
 {

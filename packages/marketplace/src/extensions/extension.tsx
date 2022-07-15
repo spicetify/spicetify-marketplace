@@ -18,14 +18,16 @@ import {
   sleep,
 } from "../logic/Utils";
 import {
-  getBlacklist,
+  fetchBlacklist,
+} from "../logic/FetchRemotes";
+import {
   fetchThemeManifest,
   fetchExtensionManifest,
-} from "../logic/FetchRemotes";
+} from "../logic/FetchTopicRemotes";
 
 (async () => {
   while (!(Spicetify?.LocalStorage && Spicetify?.showNotification)) {
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
   // https://github.com/satya164/react-simple-code-editor/issues/86
@@ -149,7 +151,7 @@ async function queryRepos(type: RepoType, pageNum = 1) {
   else if (type === "theme") url += `&q=${encodeURIComponent("topic:spicetify-themes")}`;
   if (pageNum) url += `&page=${pageNum}`;
 
-  const allRepos = await fetch(url).then(res => res.json()).catch(() => []);
+  const allRepos = await fetch(url).then((res) => res.json()).catch(() => []);
   if (!allRepos.items) {
     Spicetify.showNotification("Too Many Requests, Cool Down.");
   }
@@ -157,7 +159,7 @@ async function queryRepos(type: RepoType, pageNum = 1) {
   const filteredResults = {
     ...allRepos,
     page_count: allRepos.items.length,
-    items: allRepos.items.filter(item => !BLACKLIST?.includes(item.html_url)),
+    items: allRepos.items.filter((item) => !BLACKLIST?.includes(item.html_url)),
   };
 
   return filteredResults;
@@ -171,11 +173,11 @@ async function queryRepos(type: RepoType, pageNum = 1) {
  */
 async function loadPageRecursive(type: RepoType, pageNum: number) {
   const pageOfRepos = await queryRepos(type, pageNum);
+  // TODO: Once we migrate to the mono-manifest repo, implement the option for enabling topics search here
   appendInformationToLocalStorage(pageOfRepos, type);
 
   // Sets the amount of items that have thus been fetched
   const soFarResults = ITEMS_PER_REQUEST * (pageNum - 1) + pageOfRepos.page_count;
-  console.log({ pageOfRepos });
   const remainingResults = pageOfRepos.total_count - soFarResults;
 
   // If still have more results, recursively fetch next page
@@ -187,36 +189,26 @@ async function loadPageRecursive(type: RepoType, pageNum: number) {
 (async function initializePreload() {
   console.log("Preloading extensions and themes...");
   window.sessionStorage.clear();
-  const BLACKLIST = await getBlacklist();
+  const BLACKLIST = await fetchBlacklist();
   window.sessionStorage.setItem("marketplace:blacklist", JSON.stringify(BLACKLIST));
 
   // TODO: does this work?
   // The recursion isn't super clean...
 
-  // Begin by getting the themes and extensions from github
-  // const [extensionReposArray, themeReposArray] = await Promise.all([
-  await Promise.all([
-    loadPageRecursive("extension", 1),
-    loadPageRecursive("theme", 1),
-  ]);
+  // TODO: re-enable this once everything works with mono-manifest...
+  if (LOCALSTORAGE_KEYS.githubTopics) {
+    await Promise.all([
+      loadPageRecursive("extension", 1),
+      loadPageRecursive("theme", 1),
+    ]);
+  }
 
-  // let extensionsNextPage = 1;
-  // let themesNextPage = 1;
-  // do {
-  //     extensionReposArray = await loadPage("extension", extensionsNextPage);
-  //     appendInformationToLocalStorage(extensionReposArray, "extension");
-  // } while (extensionsNextPage);
-
-  // do {
-  //     themeReposArray = await loadPage("theme", themesNextPage);
-  //     appendInformationToLocalStorage(themeReposArray, "theme");
-  // } while (themesNextPage);
 })();
 
 async function appendInformationToLocalStorage(array, type: RepoType) {
   // This system should make it so themes and extensions are stored concurrently
   for (const repo of array.items) {
-    // console.log(repo);
+    console.log(repo);
     const data = (type === "theme")
       ? await fetchThemeManifest(repo.contents_url, repo.default_branch, repo.stargazers_count)
       : await fetchExtensionManifest(repo.contents_url, repo.default_branch, repo.stargazers_count);
@@ -225,4 +217,5 @@ async function appendInformationToLocalStorage(array, type: RepoType) {
       await sleep(5000);
     }
   }
+
 }

@@ -13,6 +13,7 @@ export const LOCALSTORAGE_KEYS = {
   // Theme installed store the localsorage key of the theme (e.g. marketplace:installed:NYRI4/Comfy-spicetify/user.css)
   themeInstalled: "marketplace:theme-installed",
   colorShift: "marketplace:colorShift",
+  githubTopics: "marketplace:githubTopics",
 };
 
 // Initalize topbar tabs
@@ -34,8 +35,12 @@ export const CUSTOM_APP_PATH = "/marketplace";
 // Used in Card.tsx
 export const MAX_TAGS = 4;
 
+export const EXTENSIONS_URL = "TODO";
+export const THEMES_URL = "https://raw.githubusercontent.com/spicetify/spicetify-themes/generated-manifest/manifest.json";
+export const APPS_URL = "TODO";
+
 export const SNIPPETS_PAGE_URL =
-	"https://github.com/spicetify/spicetify-marketplace/blob/main/packages/marketplace/src/resources/snippets.ts";
+  "https://github.com/spicetify/spicetify-marketplace/blob/main/resources/snippets.ts";
 
 export const BLACKLIST_URL =
 	"https://raw.githubusercontent.com/spicetify/spicetify-marketplace/main/resources/blacklist.json";
